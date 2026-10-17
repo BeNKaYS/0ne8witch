@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+._*
+
+# SwiftPM derleme çıktıları
+.build/
+.swiftpm/
+Package.resolved
+
+# Paketlenmiş uygulama ve yükleyici çıktıları
+*.app/
+*.pkg
+
+# OpenChamber çalışma dosyaları
+.openchamber/
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
