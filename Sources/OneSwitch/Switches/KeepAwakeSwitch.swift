@@ -99,8 +99,8 @@ public final class KeepAwakeSwitch: ObservableObject, SwitchItemProtocol {
     
     public func refresh() {
         // Sistemde çalışan caffeinate var mı kontrol et
-        let check = CommandRunner.shared.runShell("pgrep caffeinate")
-        if check.exitCode == 0 && !check.output.isEmpty {
+        let hasCaffeinate = !SystemStateReader.shared.value(for: "Caffeinate").isEmpty
+        if hasCaffeinate {
             if !isOn {
                 self.isOn = true
                 self.subtitle = "Uyanık (Etkin)"

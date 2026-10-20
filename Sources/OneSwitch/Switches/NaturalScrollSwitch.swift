@@ -30,8 +30,7 @@ public final class NaturalScrollSwitch: ObservableObject, SwitchItemProtocol {
     }
     
     public func refresh() {
-        let result = CommandRunner.shared.runShell("defaults read NSGlobalDomain com.apple.swipescrolldirection 2>/dev/null")
-        let val = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let val = SystemStateReader.shared.value(for: "ScrollDirection")
         let isNatural = (val == "1" || val.lowercased() == "true")
         self.isOn = isNatural
         self.subtitle = isNatural ? "Doğal Kaydırma Açık" : "Klasik Kaydırma (Ters)"

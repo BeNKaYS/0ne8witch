@@ -32,9 +32,7 @@ public final class UserLibrarySwitch: ObservableObject, SwitchItemProtocol {
     }
     
     public func refresh() {
-        let path = NSString(string: "~/Library").expandingTildeInPath
-        let res = CommandRunner.shared.runShell("ls -ldO \"\(path)\" 2>/dev/null")
-        let isHidden = res.output.contains("hidden")
+        let isHidden = SystemStateReader.shared.value(for: "UserLibrary").contains("hidden")
         self.isOn = !isHidden
         self.subtitle = isHidden ? "~/Library Saklı" : "~/Library Görünür"
     }

@@ -89,4 +89,10 @@ echo "  1. Uygulama Paketi: $BUNDLE_DIR"
 echo "  2. macOS Kurulum Paketi: $APP_NAME.pkg"
 echo ""
 echo "👉 Uygulamayı doğrudan açmak için: open $BUNDLE_DIR"
+# Güncelleme modülü için zip paketi oluştur
+ZIP_NAME="$APP_NAME.zip"
+rm -f "$ZIP_NAME"
+ditto -c -k --sequesterRsrc --keepParent "$BUNDLE_DIR" "$ZIP_NAME"
+echo "📦 Guncelleme zip'i olusturuldu: $ZIP_NAME"
+
 echo "👉 Yükleyiciyi başlatmak için: open $APP_NAME.pkg"

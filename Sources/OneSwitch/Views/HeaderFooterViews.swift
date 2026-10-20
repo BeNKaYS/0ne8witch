@@ -46,8 +46,20 @@ public struct HeaderView: View {
                 Spacer()
                 
                 HStack(spacing: 10) {
+                    // Çıkış Butonu
+                    Button(action: {
+                        NSApplication.shared.terminate(nil)
+                    }) {
+                        Image(systemName: "power")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Çıkış")
+                    
                     // Yenile Butonu
                     Button(action: {
+                        SystemStateReader.shared.invalidate()
                         manager.refreshAll()
                         systemMonitor.updateStats()
                         manager.showNotification("Durumlar yenilendi")
@@ -142,95 +154,50 @@ public struct QuickActionsBar: View {
                 .foregroundColor(.secondary.opacity(0.8))
                 .padding(.horizontal, 14)
             
-            VStack(spacing: 6) {
-                // 1. Satır: Temizlik ve Geliştirici
-                HStack(spacing: 6) {
-                    // Çöp Kutusunu Boşalt
-                    QuickActionButton(
-                        icon: "trash",
-                        label: "Çöpü Boşalt",
-                        action: {
-                            QuickActions.shared.emptyTrash { message in
-                                manager.showNotification(message)
-                            }
+            HStack(spacing: 6) {
+                // Çöp Kutusunu Boşalt
+                QuickActionButton(
+                    icon: "trash",
+                    label: "Çöpü Boşalt",
+                    action: {
+                        QuickActions.shared.emptyTrash { message in
+                            manager.showNotification(message)
                         }
-                    )
-                    
-                    // Panoyu Temizle
-                    QuickActionButton(
-                        icon: "doc.on.clipboard",
-                        label: "Panoyu Sil",
-                        action: {
-                            QuickActions.shared.clearPasteboard()
-                            manager.showNotification("Pano içeriği temizlendi")
-                        }
-                    )
-                    
-                    // Renk Seçici (Color Picker)
-                    QuickActionButton(
-                        icon: "eyedropper.halffull",
-                        label: "Renk Seçici",
-                        action: {
-                            QuickActions.shared.pickColor { message in
-                                manager.showNotification(message)
-                            }
-                        }
-                    )
-                    
-                    // Port Temizleyici (Port Killer)
-                    QuickActionButton(
-                        icon: "network",
-                        label: "Port Temizle",
-                        action: {
-                            QuickActions.shared.killDevPorts { message in
-                                manager.showNotification(message)
-                            }
-                        }
-                    )
-                }
+                    }
+                )
                 
-                // 2. Satır: Sistem ve Güvenlik
-                HStack(spacing: 6) {
-                    // Diskleri Çıkar
-                    QuickActionButton(
-                        icon: "eject.fill",
-                        label: "Diskleri Çıkar",
-                        action: {
-                            QuickActions.shared.ejectAllDisks { message in
-                                manager.showNotification(message)
-                            }
+                // Port Temizleyici (Port Killer)
+                QuickActionButton(
+                    icon: "network",
+                    label: "Port Temizle",
+                    action: {
+                        QuickActions.shared.killDevPorts { message in
+                            manager.showNotification(message)
                         }
-                    )
-                    
-                    // RAM Temizle
-                    QuickActionButton(
-                        icon: "memorychip",
-                        label: "RAM Temizle",
-                        action: {
-                            QuickActions.shared.purgeMemory { message in
-                                manager.showNotification(message)
-                            }
+                    }
+                )
+                
+                // Diskleri Çıkar
+                QuickActionButton(
+                    icon: "eject.fill",
+                    label: "Diskleri Çıkar",
+                    action: {
+                        QuickActions.shared.ejectAllDisks { message in
+                            manager.showNotification(message)
                         }
-                    )
-                    
-                    // Ekranı Kilitle
-                    QuickActionButton(
-                        icon: "lock",
-                        label: "Kilitle",
-                        action: {
-                            QuickActions.shared.lockScreen()
+                    }
+                )
+                
+                // RAM Temizle
+                QuickActionButton(
+                    icon: "memorychip",
+                    label: "RAM Temizle",
+                    action: {
+                        QuickActions.shared.purgeMemory { message in
+                            manager.showNotification(message)
                         }
-                    )
-                    
-                    // Ekran Koruyucu
-                    QuickActionButton(
-                        icon: "sparkle",
-                        label: "Koruyucu",
-                        action: {
-                            QuickActions.shared.startScreenSaver()
-                        }
-                    )
-                }
+                    }
+                )
             }
             .padding(.horizontal, 12)
         }
@@ -264,72 +231,28 @@ public struct QuickActionButton: View {
     }
 }
 
-/// Menünün alt bilgi çubuğu
-public struct FooterView: View {
+/// Kısa süreli bilgilendirme mesajı
+public struct NotificationBanner: View {
     @ObservedObject var manager = SwitchManager.shared
     
     public var body: some View {
-        VStack(spacing: 6) {
-            // Bildirim Mesajı (Varsa)
-            if let notif = manager.statusNotification {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                        .font(.system(size: 11))
-                    Text(notif)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.primary)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule()
-                        .fill(Color.green.opacity(0.15))
-                )
-                .transition(.opacity.combined(with: .scale))
+        if let notif = manager.statusNotification {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.system(size: 11))
+                Text(notif)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.primary)
             }
-            
-            HStack {
-                Text("0ne8witch v1.0 • macOS Yerel")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                
-                Spacer()
-                
-                HStack(spacing: 8) {
-                    Button(action: {
-                        SettingsWindowController.shared.showSettings()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "gearshape")
-                                .font(.system(size: 10))
-                            Text("Ayarlar")
-                                .font(.system(size: 11))
-                        }
-                        .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Text("•")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary.opacity(0.4))
-                    
-                    Button(action: {
-                        NSApplication.shared.terminate(nil)
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "power")
-                                .font(.system(size: 10))
-                            Text("Çıkış")
-                                .font(.system(size: 11))
-                        }
-                        .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(Color.green.opacity(0.15))
+            )
+            .transition(.opacity.combined(with: .scale))
+            .padding(.bottom, 6)
         }
     }
 }

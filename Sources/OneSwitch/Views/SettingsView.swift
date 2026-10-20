@@ -18,6 +18,9 @@ public struct SettingsView: View {
                 TabButton(title: "Anahtarları Özelleştir", icon: "slider.horizontal.3", tag: 1, currentTab: prefs.selectedTab) {
                     prefs.selectedTab = 1
                 }
+                TabButton(title: "Guncellemeler", icon: "arrow.down.circle", tag: 3, currentTab: prefs.selectedTab) {
+                    prefs.selectedTab = 3
+                }
                 TabButton(title: "Hakkında", icon: "info.circle", tag: 2, currentTab: prefs.selectedTab) {
                     prefs.selectedTab = 2
                 }
@@ -34,6 +37,8 @@ public struct SettingsView: View {
                     GeneralSettingsView()
                 } else if prefs.selectedTab == 1 {
                     CustomizeSwitchesView()
+                } else if prefs.selectedTab == 3 {
+                    UpdateSettingsView()
                 } else {
                     AboutSettingsView()
                 }

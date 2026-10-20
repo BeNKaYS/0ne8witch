@@ -30,8 +30,7 @@ public final class DesktopIconsSwitch: ObservableObject, SwitchItemProtocol {
     }
     
     public func refresh() {
-        let result = CommandRunner.shared.runShell("defaults read com.apple.finder CreateDesktop 2>/dev/null")
-        let val = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let val = SystemStateReader.shared.value(for: "FinderCreateDesktop")
         // Eğer 0 veya false ise gizli (yani switch açık) demektir
         let isHidden = (val == "0" || val.lowercased() == "false")
         self.isOn = isHidden

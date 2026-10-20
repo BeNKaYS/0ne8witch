@@ -30,8 +30,7 @@ public final class FileExtensionsSwitch: ObservableObject, SwitchItemProtocol {
     }
     
     public func refresh() {
-        let result = CommandRunner.shared.runShell("defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null")
-        let val = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let val = SystemStateReader.shared.value(for: "AppleShowAllExtensions")
         let isShowing = (val == "1" || val.lowercased() == "true")
         self.isOn = isShowing
         self.subtitle = isShowing ? "Uzantılar Görünür" : "Uzantılar Saklı"

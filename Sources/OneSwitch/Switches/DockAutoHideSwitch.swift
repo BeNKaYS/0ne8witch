@@ -28,9 +28,8 @@ public final class DockAutoHideSwitch: ObservableObject, SwitchItemProtocol {
     }
     
     public func refresh() {
-        let script = "tell application \"System Events\" to tell dock preferences to get autohide"
-        let res = CommandRunner.shared.runAppleScript(script)
-        let isAuto = res.output.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "true"
+        let val = SystemStateReader.shared.value(for: "DockAutohide").lowercased()
+        let isAuto = (val == "1" || val == "true")
         self.isOn = isAuto
         self.subtitle = isAuto ? "Dock Otomatik Gizleniyor" : "Dock Her Zaman Görünür"
     }

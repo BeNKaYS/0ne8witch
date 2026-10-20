@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Combine
 
 extension NSApplication {
     /// Uygulamayı öne getirir (menü çubuğu uygulamaları için gerekli)
@@ -16,6 +17,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private var eventMonitor: Any?
+    private var updateCancellable: AnyCancellable?
     
     public func applicationDidFinishLaunching(_ notification: Notification) {
         // Menü Çubuğu Öğesi Oluştur
@@ -46,6 +48,18 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Canlı Sistem Monitörünü Başlat (CPU & RAM)
         SystemMonitor.shared.startMonitoring()
+
+        // Güncelleme kontrolü (arka planda)
+        updateCancellable = UpdateManager.shared.$state
+            .receive(on: DispatchQueue.main)
+            .sink { state in
+                if case .available(let v, _) = state {
+                    SwitchManager.shared.showNotification("Yeni surum mevcut: \(v)")
+                }
+            }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            UpdateManager.shared.checkForUpdates()
+        }
         
         // Dışarı tıklandığında popover'ı kapatmak için global event monitor
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -99,11 +113,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func showPopover() {
         guard let button = statusItem.button else { return }
-        SwitchManager.shared.refreshAll()
         // Menü başka uygulamaların arkasında kalmasın
         NSApp.bringAppForward()
+        
+        // Popover'ı beklemeden göster; durumlar arka planda okunup sonra tazelenir.
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
+        
+        SystemStateReader.shared.prewarmAsync()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            SwitchManager.shared.refreshAll()
+        }
     }
     
     public func closePopover() {

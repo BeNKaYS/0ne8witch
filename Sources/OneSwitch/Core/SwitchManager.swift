@@ -27,24 +27,31 @@ public final class SwitchManager: ObservableObject {
     @Published public var statusNotification: String? = nil
     
     private var cancellables = Set<AnyCancellable>()
+    /// Toplu yenileme sırasında ara UI güncellemelerini engeller.
+    private var isBatchRefreshing = false
+    
+    private func relayChange() {
+        guard !isBatchRefreshing else { return }
+        objectWillChange.send()
+    }
     
     private init() {
         // Alt anahtarlardaki değişiklikleri dinleyip UI'ı güncelle
-        keepAwake.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        darkMode.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        desktopIcons.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        hiddenFiles.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        fileExtensions.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        userLibrary.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        microphoneMute.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        stageManager.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        hideWidgets.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        dockAutoHide.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        screenClean.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        lowPowerMode.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        naturalScroll.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        presentationMode.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        PreferencesManager.shared.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+        keepAwake.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        darkMode.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        desktopIcons.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        hiddenFiles.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        fileExtensions.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        userLibrary.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        microphoneMute.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        stageManager.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        hideWidgets.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        dockAutoHide.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        screenClean.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        lowPowerMode.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        naturalScroll.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        presentationMode.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
+        PreferencesManager.shared.objectWillChange.sink { [weak self] _ in self?.relayChange() }.store(in: &cancellables)
     }
     
     /// Tüm anahtarları dizi olarak döndürür
@@ -79,9 +86,13 @@ public final class SwitchManager: ObservableObject {
         }
     }
     
-    /// Menü açıldığında tüm anahtarların durumunu günceller
+    /// Menü açıldığında tüm anahtarların durumunu günceller.
+    /// Tüm okumalar tek bir sistem çağrısını paylaşır.
     public func refreshAll() {
+        isBatchRefreshing = true
         allSwitches.forEach { $0.refresh() }
+        isBatchRefreshing = false
+        objectWillChange.send()
     }
     
     /// Kısa süreli bilgilendirme mesajı gösterir

@@ -45,12 +45,14 @@ public struct MainMenuView: View {
             // Hızlı Eylemler (Arama yoksa göster)
             if manager.searchText.isEmpty && manager.selectedCategory == .all {
                 QuickActionsBar()
-                Divider()
-                    .padding(.top, 4)
             }
             
-            // Alt Bilgi & Çıkış
-            FooterView()
+            // Kısa süreli bilgilendirme
+            if manager.statusNotification != nil {
+                Divider()
+                    .padding(.top, 4)
+                NotificationBanner()
+            }
         }
         .frame(width: 320)
         .background(VisualEffectView().edgesIgnoringSafeArea(.all))

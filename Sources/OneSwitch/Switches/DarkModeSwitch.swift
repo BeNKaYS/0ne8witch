@@ -29,8 +29,7 @@ public final class DarkModeSwitch: ObservableObject, SwitchItemProtocol {
     }
     
     public func refresh() {
-        let result = CommandRunner.shared.runShell("defaults read -g AppleInterfaceStyle 2>/dev/null")
-        let isDark = result.output.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "dark"
+        let isDark = SystemStateReader.shared.value(for: "AppleInterfaceStyle").lowercased() == "dark"
         self.isOn = isDark
         self.subtitle = isDark ? "Karanlık Tema Açık" : "Aydınlık Tema Açık"
     }

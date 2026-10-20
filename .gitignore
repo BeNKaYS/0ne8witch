@@ -18,3 +18,6 @@ Package.resolved
 xcuserdata/
 *.xcuserstate
 DerivedData/
+
+# Güncelleme zip çıktıları
+*.zip

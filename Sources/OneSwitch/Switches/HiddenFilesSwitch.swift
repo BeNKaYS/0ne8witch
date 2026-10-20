@@ -30,8 +30,7 @@ public final class HiddenFilesSwitch: ObservableObject, SwitchItemProtocol {
     }
     
     public func refresh() {
-        let result = CommandRunner.shared.runShell("defaults read com.apple.finder AppleShowAllFiles 2>/dev/null")
-        let val = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let val = SystemStateReader.shared.value(for: "FinderShowAllFiles")
         let isShowing = (val == "1" || val.lowercased() == "true")
         self.isOn = isShowing
         self.subtitle = isShowing ? "Gizli Dosyalar Görünür" : "Gizli Dosyalar Saklı"

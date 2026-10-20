@@ -44,8 +44,7 @@ public final class PresentationModeSwitch: ObservableObject, SwitchItemProtocol 
     
     public func refresh() {
         // Masaüstü simgeleri gizli ve KeepAwake açıksa sunum modu aktiftir
-        let desktopRes = CommandRunner.shared.runShell("defaults read com.apple.finder CreateDesktop 2>/dev/null")
-        let desktopHidden = (desktopRes.output.trimmingCharacters(in: .whitespacesAndNewlines) == "0")
+        let desktopHidden = (SystemStateReader.shared.value(for: "FinderCreateDesktop") == "0")
         let isAwake = SwitchManager.shared.keepAwake.isOn
         
         if desktopHidden && isAwake {

@@ -30,8 +30,7 @@ public final class StageManagerSwitch: ObservableObject, SwitchItemProtocol {
     }
     
     public func refresh() {
-        let result = CommandRunner.shared.runShell("defaults read com.apple.WindowManager GloballyEnabled 2>/dev/null")
-        let val = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let val = SystemStateReader.shared.value(for: "WindowManagerGloballyEnabled")
         let active = (val == "1" || val.lowercased() == "true")
         self.isOn = active
         self.subtitle = active ? "Sahne Yöneticisi Açık" : "Kapalı"

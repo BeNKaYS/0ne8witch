@@ -35,8 +35,7 @@ public final class LowPowerModeSwitch: ObservableObject, SwitchItemProtocol {
     }
     
     public func refresh() {
-        let res = CommandRunner.shared.runShell("pmset -g 2>/dev/null | grep lowpowermode")
-        let isEnabled = res.output.contains("1")
+        let isEnabled = SystemStateReader.shared.value(for: "LowPowerMode") == "1"
         self.isOn = isEnabled
         self.subtitle = isEnabled ? "Pil Tasarrufu Etkin" : "Standart Performans"
     }

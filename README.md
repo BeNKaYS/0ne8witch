@@ -70,6 +70,9 @@ Bu işlem `0ne8witch.app` uygulamasını doğrudan `/Applications` (Uygulamalar)
 open 0ne8witch.app
 ```
 
+### 3. Otomatik Güncelleme Modülü:
+Ayarlar penceresindeki **Güncellemeler** sekmesinden veya menü çubuğundaki **Güncelle** düğmesinden yeni sürümler kontrol edilir. GitHub Releases (veya özel bir JSON manifest) üzerinden indirilen zip paketi otomatik olarak kurulur ve uygulama yeniden başlatılır. Böylece her değişiklik için yeniden derleme yapmak gerekmez.
+
 ### 3. Sıfırdan Tekrar Paketleme (Release):
 ```bash
 ./build_pkg.sh

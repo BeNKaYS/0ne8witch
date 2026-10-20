@@ -30,8 +30,7 @@ public final class HideWidgetsSwitch: ObservableObject, SwitchItemProtocol {
     }
     
     public func refresh() {
-        let result = CommandRunner.shared.runShell("defaults read com.apple.WindowManager StandardHideWidgets 2>/dev/null")
-        let val = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let val = SystemStateReader.shared.value(for: "WindowManagerStandardHideWidgets")
         let isHidden = (val == "1" || val.lowercased() == "true")
         self.isOn = isHidden
         self.subtitle = isHidden ? "Araç Takımları Gizli" : "Araç Takımları Masaüstünde"
