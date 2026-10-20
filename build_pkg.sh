@@ -41,9 +41,9 @@ cat << 'EOF' > "$BUNDLE_DIR/Contents/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
+    <string>1.0.1</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>2</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
@@ -80,7 +80,7 @@ rm -f "$APP_NAME.pkg"
 pkgbuild --component "$BUNDLE_DIR" \
          --install-location "/Applications" \
          --identifier "com.avenox.0ne8witch" \
-         --version "1.0.0" \
+         --version "1.0.1" \
          "$APP_NAME.pkg"
 
 echo ""
