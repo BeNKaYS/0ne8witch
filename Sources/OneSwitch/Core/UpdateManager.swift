@@ -49,11 +49,17 @@ public final class UpdateManager: NSObject, ObservableObject {
     private let defaults = UserDefaults.standard
     private let kFeedURL = "kUpdateFeedURL"
     private let kLastChecked = "kUpdateLastChecked"
+    private let kLocalUpdateDir = "kLocalUpdateDirectory"
     private let defaultFeedURL = "https://api.github.com/repos/BeNKaYS/0ne8witch/releases/latest"
 
     public var feedURL: String {
         get { defaults.string(forKey: kFeedURL) ?? defaultFeedURL }
         set { defaults.set(newValue, forKey: kFeedURL) }
+    }
+
+    /// Yerel guncelleme paketlerinin aranacagi klasor.
+    @Published public var localUpdateDirectory: String = NSString(string: "~/Downloads").expandingTildeInPath {
+        didSet { defaults.set(localUpdateDirectory, forKey: kLocalUpdateDir) }
     }
 
     private var downloadTask: URLSessionDownloadTask?
@@ -70,6 +76,9 @@ public final class UpdateManager: NSObject, ObservableObject {
         super.init()
         if let ts = defaults.object(forKey: kLastChecked) as? Double {
             lastChecked = Date(timeIntervalSince1970: ts)
+        }
+        if let dir = defaults.string(forKey: kLocalUpdateDir), !dir.isEmpty {
+            localUpdateDirectory = dir
         }
     }
 
@@ -277,6 +286,39 @@ public final class UpdateManager: NSObject, ObservableObject {
         default:
             state = .error("Desteklenmeyen dosya turu. .zip veya .app secin.")
         }
+    }
+
+    /// Yerel guncelleme klasorundeki .zip/.app paketlerini, en yeniden eskiye dogru listeler.
+    public func localUpdateCandidates(limit: Int = 10) -> [URL] {
+        let fm = FileManager.default
+        let expanded = NSString(string: localUpdateDirectory).expandingTildeInPath
+        var isDirectory: ObjCBool = false
+        guard fm.fileExists(atPath: expanded, isDirectory: &isDirectory) else { return [] }
+
+        let root = URL(fileURLWithPath: expanded)
+        let supportedExtensions = ["zip", "app"]
+
+        // Adres dogrudan bir paket dosyasini gosteriyorsa onu dondur.
+        if !isDirectory.boolValue {
+            return supportedExtensions.contains(root.pathExtension.lowercased()) ? [root] : []
+        }
+
+        guard let items = try? fm.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+
+        return items
+            .filter { supportedExtensions.contains($0.pathExtension.lowercased()) }
+            .sorted { modificationDate(of: $0) > modificationDate(of: $1) }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    private func modificationDate(of url: URL) -> Date {
+        let values = try? url.resourceValues(forKeys: [.contentModificationDateKey])
+        return values?.contentModificationDate ?? .distantPast
     }
 
     /// Verilen .app paketini mevcut uygulamanin uzerine kurar ve yeniden baslatir.

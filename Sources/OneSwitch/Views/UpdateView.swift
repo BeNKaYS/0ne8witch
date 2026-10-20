@@ -162,6 +162,57 @@ public struct UpdateSettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
+                Divider().padding(.vertical, 6)
+
+                // Yerel guncelleme klasoru
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Yerel Guncelleme Klasoru")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("Guncelleme paketleri (.zip veya .app) once bu klasorde aranir.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    HStack(spacing: 8) {
+                        TextField("Orn: ~/Downloads", text: $updater.localUpdateDirectory)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 11))
+                        Button("Gozat...") {
+                            chooseLocalDirectory()
+                        }
+                        .font(.system(size: 11))
+                    }
+
+                    if localCandidates.isEmpty {
+                        Text("Bu klasorde .zip veya .app bulunamadi.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(localCandidates, id: \.path) { url in
+                            HStack(spacing: 8) {
+                                Image(systemName: url.pathExtension.lowercased() == "app" ? "app.badge" : "doc.zipper")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.accentColor)
+                                Text(url.lastPathComponent)
+                                    .font(.system(size: 11))
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Spacer()
+                                Button("Kur") {
+                                    updater.installLocalPackage(from: url)
+                                }
+                                .font(.system(size: 11))
+                                .disabled(isBusy)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.primary.opacity(0.04))
+                            )
+                        }
+                    }
+                }
+
                 Spacer(minLength: 8)
             }
             .padding(20)
@@ -184,8 +235,27 @@ public struct UpdateSettingsView: View {
         panel.allowedContentTypes = types
 
         if panel.runModal() == .OK, let url = panel.url {
+            updater.localUpdateDirectory = url.deletingLastPathComponent().path
             updater.installLocalPackage(from: url)
         }
+    }
+
+    private func chooseLocalDirectory() {
+        let panel = NSOpenPanel()
+        panel.title = "Yerel Guncelleme Klasoru Sec"
+        panel.message = "Guncelleme paketlerinin bulundugu klasoru secin."
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+
+        if panel.runModal() == .OK, let url = panel.url {
+            updater.localUpdateDirectory = url.path
+        }
+    }
+
+    private var localCandidates: [URL] {
+        updater.localUpdateCandidates()
     }
 
     private var isBusy: Bool {
