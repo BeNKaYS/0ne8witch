@@ -14,12 +14,12 @@ public struct SwitchRowView: View {
             // İkon Kutusu
             ZStack {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(item.isOn ? item.activeColor.opacity(0.18) : Color.primary.opacity(0.06))
+                    .fill(item.isOn ? AppTheme.activeBackground : Color.primary.opacity(0.06))
                     .frame(width: 34, height: 34)
                 
                 Image(systemName: item.iconName)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(item.isOn ? item.activeColor : Color.secondary)
+                    .foregroundColor(item.isOn ? AppTheme.active : Color.secondary)
             }
             
             // Başlık ve Alt Durum
@@ -30,7 +30,7 @@ public struct SwitchRowView: View {
                 
                 Text(item.subtitle)
                     .font(.system(size: 11))
-                    .foregroundColor(item.isOn ? item.activeColor : .secondary)
+                    .foregroundColor(item.isOn ? AppTheme.active : .secondary)
             }
             
             Spacer()
@@ -59,7 +59,7 @@ public struct SwitchRowView: View {
                 } label: {
                     Image(systemName: "timer")
                         .font(.system(size: 13))
-                        .foregroundColor(keepAwake.isOn ? keepAwake.activeColor : .secondary)
+                        .foregroundColor(keepAwake.isOn ? AppTheme.active : .secondary)
                         .padding(5)
                         .background(Color.primary.opacity(0.05))
                         .clipShape(Circle())
@@ -76,6 +76,7 @@ public struct SwitchRowView: View {
                 }
             ))
             .toggleStyle(.switch)
+            .tint(AppTheme.active)
             .labelsHidden()
             .controlSize(.small)
         }
@@ -83,7 +84,11 @@ public struct SwitchRowView: View {
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.primary.opacity(0.02))
+                .fill(item.isOn ? AppTheme.active.opacity(0.07) : Color.primary.opacity(0.02))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(item.isOn ? AppTheme.active.opacity(0.22) : Color.clear, lineWidth: 1)
         )
     }
 }

@@ -130,7 +130,7 @@ public struct HeaderView: View {
                             .padding(.vertical, 4)
                             .background(
                                 Capsule()
-                                    .fill(manager.selectedCategory == cat ? Color.accentColor : Color.primary.opacity(0.06))
+                                    .fill(manager.selectedCategory == cat ? AppTheme.active : Color.primary.opacity(0.06))
                             )
                             .foregroundColor(manager.selectedCategory == cat ? .white : .primary)
                         }

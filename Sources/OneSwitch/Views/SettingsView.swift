@@ -251,7 +251,7 @@ private struct CustomizeSwitchesView: View {
                     HStack(spacing: 12) {
                         Image(systemName: item.iconName)
                             .font(.system(size: 14))
-                            .foregroundColor(item.activeColor)
+                            .foregroundColor(prefs.isSwitchVisible(id: item.id) ? AppTheme.active : .secondary)
                             .frame(width: 20)
                         
                         Text(item.title)
@@ -264,6 +264,7 @@ private struct CustomizeSwitchesView: View {
                             set: { _ in prefs.toggleSwitchVisibility(id: item.id) }
                         ))
                         .toggleStyle(.switch)
+                        .tint(AppTheme.active)
                         .labelsHidden()
                         .controlSize(.small)
                     }
