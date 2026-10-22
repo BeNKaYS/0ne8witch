@@ -155,6 +155,57 @@ public final class QuickActions {
         CommandRunner.shared.runShell("pmset displaysleepnow")
     }
     
+    /// Dock'a ince bir ayraç (boşluk) ekler.
+    /// Ayraç, Dock'taki uygulama gruplarını birbirinden ayırmak için kullanılır.
+    public func addDockSpacer(completion: @escaping (String) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let dock = UserDefaults(suiteName: "com.apple.dock") else {
+                DispatchQueue.main.async { completion("Dock ayarlarına erişilemedi.") }
+                return
+            }
+            
+            var apps = (dock.array(forKey: "persistent-apps") as? [[String: Any]]) ?? []
+            apps.append(["tile-type": "small-spacer-tile"])
+            dock.set(apps, forKey: "persistent-apps")
+            dock.synchronize()
+            
+            _ = CommandRunner.shared.runShell("killall Dock")
+            DispatchQueue.main.async {
+                completion("Dock'a ayraç eklendi.")
+            }
+        }
+    }
+    
+    /// Dock'a eklenmiş tüm ayraçları kaldırır.
+    public func removeDockSpacers(completion: @escaping (String) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let dock = UserDefaults(suiteName: "com.apple.dock") else {
+                DispatchQueue.main.async { completion("Dock ayarlarına erişilemedi.") }
+                return
+            }
+            
+            let apps = (dock.array(forKey: "persistent-apps") as? [[String: Any]]) ?? []
+            let filtered = apps.filter { item in
+                let type = (item["tile-type"] as? String) ?? ""
+                return !type.contains("spacer")
+            }
+            let removed = apps.count - filtered.count
+            
+            guard removed > 0 else {
+                DispatchQueue.main.async { completion("Dock'ta ayraç bulunamadı.") }
+                return
+            }
+            
+            dock.set(filtered, forKey: "persistent-apps")
+            dock.synchronize()
+            
+            _ = CommandRunner.shared.runShell("killall Dock")
+            DispatchQueue.main.async {
+                completion("\(removed) Dock ayracı kaldırıldı.")
+            }
+        }
+    }
+    
     /// Xcode DerivedData önbelleğini temizler
     public func cleanXcodeDerivedData(completion: @escaping (String) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {

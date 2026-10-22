@@ -177,9 +177,6 @@ public struct QuickActionsBar: View {
                     }
                 )
                 
-                // Grupları ayıran dikey çizgi
-                QuickActionSeparator()
-                
                 // Diskleri Çıkar
                 QuickActionButton(
                     icon: "eject.fill",
@@ -203,21 +200,32 @@ public struct QuickActionsBar: View {
                 )
             }
             .padding(.horizontal, 12)
+            
+            // Dock ayraçları
+            HStack(spacing: 6) {
+                QuickActionButton(
+                    icon: "plus.rectangle",
+                    label: "Dock Ayracı Ekle",
+                    action: {
+                        QuickActions.shared.addDockSpacer { message in
+                            manager.showNotification(message)
+                        }
+                    }
+                )
+                
+                QuickActionButton(
+                    icon: "trash.slash",
+                    label: "Ayraçları Sil",
+                    action: {
+                        QuickActions.shared.removeDockSpacers { message in
+                            manager.showNotification(message)
+                        }
+                    }
+                )
+            }
+            .padding(.horizontal, 12)
         }
         .padding(.vertical, 4)
-    }
-}
-
-/// Hızlı eylem gruplarını birbirinden ayıran dikey çizgi.
-/// Açık ve koyu temada aynı şekilde okunur.
-public struct QuickActionSeparator: View {
-    public init() {}
-    
-    public var body: some View {
-        RoundedRectangle(cornerRadius: 0.5, style: .continuous)
-            .fill(Color.primary.opacity(0.15))
-            .frame(width: 1, height: 34)
-            .padding(.horizontal, 1)
     }
 }
 
