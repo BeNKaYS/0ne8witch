@@ -155,23 +155,39 @@ public final class QuickActions {
         CommandRunner.shared.runShell("pmset displaysleepnow")
     }
     
-    /// Dock'a ince bir ayraç (boşluk) ekler.
+    /// Dock'a görünür dikey çizgi şeklinde bir ayraç ekler.
     /// Ayraç, Dock'taki uygulama gruplarını birbirinden ayırmak için kullanılır.
     public func addDockSpacer(completion: @escaping (String) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
+            guard let template = self.ensureDockSeparatorApp() else {
+                DispatchQueue.main.async { completion("Dock ayracı oluşturulamadı.") }
+                return
+            }
+            
+            let fm = FileManager.default
+            let baseDir = template.deletingLastPathComponent()
+            let uniqueURL = baseDir.appendingPathComponent("DockSeparator-\(Int(Date().timeIntervalSince1970 * 1000)).app")
+            
+            do {
+                try fm.copyItem(at: template, to: uniqueURL)
+            } catch {
+                DispatchQueue.main.async { completion("Dock ayracı hazırlanamadı.") }
+                return
+            }
+            
             guard let dock = UserDefaults(suiteName: "com.apple.dock") else {
                 DispatchQueue.main.async { completion("Dock ayarlarına erişilemedi.") }
                 return
             }
             
             var apps = (dock.array(forKey: "persistent-apps") as? [[String: Any]]) ?? []
-            apps.append(["tile-type": "small-spacer-tile"])
+            apps.append(self.dockEntry(for: uniqueURL))
             dock.set(apps, forKey: "persistent-apps")
             dock.synchronize()
             
             _ = CommandRunner.shared.runShell("killall Dock")
             DispatchQueue.main.async {
-                completion("Dock'a ayraç eklendi.")
+                completion("Dock'a dikey ayraç eklendi.")
             }
         }
     }
@@ -185,11 +201,12 @@ public final class QuickActions {
             }
             
             let apps = (dock.array(forKey: "persistent-apps") as? [[String: Any]]) ?? []
+            var removed = 0
             let filtered = apps.filter { item in
-                let type = (item["tile-type"] as? String) ?? ""
-                return !type.contains("spacer")
+                let isSpacer = self.isSpacerTile(item)
+                if isSpacer { removed += 1 }
+                return !isSpacer
             }
-            let removed = apps.count - filtered.count
             
             guard removed > 0 else {
                 DispatchQueue.main.async { completion("Dock'ta ayraç bulunamadı.") }
@@ -200,10 +217,166 @@ public final class QuickActions {
             dock.synchronize()
             
             _ = CommandRunner.shared.runShell("killall Dock")
+            
+            // Yardımcı ayraç uygulamalarını temizle
+            let fm = FileManager.default
+            if let items = try? fm.contentsOfDirectory(at: self.separatorBaseDir(), includingPropertiesForKeys: nil) {
+                for item in items where item.lastPathComponent.hasPrefix("DockSeparator") {
+                    try? fm.removeItem(at: item)
+                }
+            }
+            
             DispatchQueue.main.async {
                 completion("\(removed) Dock ayracı kaldırıldı.")
             }
         }
+    }
+    
+    // MARK: - Dock ayracı yardımcıları
+    
+    private func separatorBaseDir() -> URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
+        return base.appendingPathComponent("0ne8witch", isDirectory: true)
+    }
+    
+    /// Dock'ta dikey çizgi olarak görünen küçük yardımcı uygulamayı oluşturur.
+    private func ensureDockSeparatorApp() -> URL? {
+        let fm = FileManager.default
+        let appURL = separatorBaseDir().appendingPathComponent("DockSeparator.app", isDirectory: true)
+        let contents = appURL.appendingPathComponent("Contents", isDirectory: true)
+        let macOSDir = contents.appendingPathComponent("MacOS", isDirectory: true)
+        let resources = contents.appendingPathComponent("Resources", isDirectory: true)
+        let executable = macOSDir.appendingPathComponent("DockSeparator")
+        let icnsURL = resources.appendingPathComponent("Separator.icns")
+        
+        if fm.fileExists(atPath: executable.path), fm.fileExists(atPath: icnsURL.path) {
+            return appURL
+        }
+        
+        do {
+            try fm.createDirectory(at: macOSDir, withIntermediateDirectories: true)
+            try fm.createDirectory(at: resources, withIntermediateDirectories: true)
+            
+            let info: [String: Any] = [
+                "CFBundleExecutable": "DockSeparator",
+                "CFBundleIdentifier": "com.avenox.0ne8witch.dockseparator",
+                "CFBundleName": "Ayrac",
+                "CFBundleDisplayName": "Ayrac",
+                "CFBundlePackageType": "APPL",
+                "CFBundleShortVersionString": "1.0",
+                "CFBundleVersion": "1",
+                "CFBundleIconFile": "Separator",
+                "LSUIElement": true,
+                "LSMinimumSystemVersion": "13.0"
+            ]
+            let infoData = try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)
+            try infoData.write(to: contents.appendingPathComponent("Info.plist"))
+            
+            // Tıklanınca hiçbir şey yapmayan sessiz yardımcı
+            try "#!/bin/bash\nexit 0\n".write(to: executable, atomically: true, encoding: .utf8)
+            try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
+            
+            guard try writeSeparatorIcon(to: resources) else { return nil }
+            return appURL
+        } catch {
+            return nil
+        }
+    }
+    
+    /// Turuncu dikey çizgi ikonunu .icns olarak üretir.
+    private func writeSeparatorIcon(to resources: URL) throws -> Bool {
+        let fm = FileManager.default
+        let pixelSize = 1024
+        
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixelSize,
+            pixelsHigh: pixelSize,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else { return false }
+        
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSColor.clear.setFill()
+        NSRect(x: 0, y: 0, width: pixelSize, height: pixelSize).fill()
+        
+        let barWidth: CGFloat = 34
+        let barHeight: CGFloat = 520
+        let barRect = NSRect(
+            x: (CGFloat(pixelSize) - barWidth) / 2,
+            y: (CGFloat(pixelSize) - barHeight) / 2,
+            width: barWidth,
+            height: barHeight
+        )
+        NSColor(calibratedRed: 1.0, green: 0.63, blue: 0.08, alpha: 1.0).setFill()
+        NSBezierPath(roundedRect: barRect, xRadius: barWidth / 2, yRadius: barWidth / 2).fill()
+        NSGraphicsContext.restoreGraphicsState()
+        
+        guard let pngData = rep.representation(using: .png, properties: [:]) else { return false }
+        let pngURL = resources.appendingPathComponent("Separator.png")
+        try pngData.write(to: pngURL)
+        
+        let iconsetURL = resources.appendingPathComponent("Separator.iconset", isDirectory: true)
+        try? fm.removeItem(at: iconsetURL)
+        try fm.createDirectory(at: iconsetURL, withIntermediateDirectories: true)
+        
+        let variants: [(String, Int)] = [
+            ("icon_16x16", 16), ("icon_16x16@2x", 32),
+            ("icon_32x32", 32), ("icon_32x32@2x", 64),
+            ("icon_128x128", 128), ("icon_128x128@2x", 256),
+            ("icon_256x256", 256), ("icon_256x256@2x", 512),
+            ("icon_512x512", 512), ("icon_512x512@2x", 1024)
+        ]
+        for (name, size) in variants {
+            let outURL = iconsetURL.appendingPathComponent("\(name).png")
+            _ = CommandRunner.shared.runShell("sips -z \(size) \(size) \"\(pngURL.path)\" --out \"\(outURL.path)\" >/dev/null 2>&1")
+        }
+        
+        let icnsURL = resources.appendingPathComponent("Separator.icns")
+        let result = CommandRunner.shared.runShell("iconutil -c icns \"\(iconsetURL.path)\" -o \"\(icnsURL.path)\"")
+        try? fm.removeItem(at: iconsetURL)
+        try? fm.removeItem(at: pngURL)
+        
+        return result.exitCode == 0 && fm.fileExists(atPath: icnsURL.path)
+    }
+    
+    /// Dock'un persistent-apps listesine eklenecek paket girdisi.
+    private func dockEntry(for appURL: URL) -> [String: Any] {
+        var urlString = appURL.absoluteString
+        if !urlString.hasSuffix("/") {
+            urlString += "/"
+        }
+        return [
+            "tile-data": [
+                "file-data": [
+                    "_CFURLString": urlString,
+                    "_CFURLStringType": 15
+                ],
+                "file-label": "Ayrac"
+            ],
+            "tile-type": "file-tile"
+        ]
+    }
+    
+    /// Girdinin bizim eklediğimiz bir ayraç olup olmadığını belirler.
+    private func isSpacerTile(_ item: [String: Any]) -> Bool {
+        if let type = item["tile-type"] as? String, type.contains("spacer") {
+            return true
+        }
+        if let tile = item["tile-data"] as? [String: Any],
+           let fileData = tile["file-data"] as? [String: Any],
+           let url = fileData["_CFURLString"] as? String,
+           url.contains("DockSeparator") {
+            return true
+        }
+        return false
     }
     
     /// Xcode DerivedData önbelleğini temizler
