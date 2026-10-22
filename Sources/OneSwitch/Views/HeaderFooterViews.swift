@@ -177,6 +177,9 @@ public struct QuickActionsBar: View {
                     }
                 )
                 
+                // Grupları ayıran dikey çizgi
+                QuickActionSeparator()
+                
                 // Diskleri Çıkar
                 QuickActionButton(
                     icon: "eject.fill",
@@ -202,6 +205,19 @@ public struct QuickActionsBar: View {
             .padding(.horizontal, 12)
         }
         .padding(.vertical, 4)
+    }
+}
+
+/// Hızlı eylem gruplarını birbirinden ayıran dikey çizgi.
+/// Açık ve koyu temada aynı şekilde okunur.
+public struct QuickActionSeparator: View {
+    public init() {}
+    
+    public var body: some View {
+        RoundedRectangle(cornerRadius: 0.5, style: .continuous)
+            .fill(Color.primary.opacity(0.15))
+            .frame(width: 1, height: 34)
+            .padding(.horizontal, 1)
     }
 }
 
