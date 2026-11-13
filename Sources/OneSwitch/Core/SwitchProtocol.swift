@@ -10,7 +10,16 @@ public enum SwitchCategory: String, CaseIterable, Identifiable {
     case utility = "Araçlar"
     
     public var id: String { rawValue }
-    
+
+    /// Dar filtre çiplerine sığan kısa ad.
+    public var shortName: String {
+        switch self {
+        case .display: return "Ekran"
+        case .media: return "Ses"
+        default: return rawValue
+        }
+    }
+
     public var icon: String {
         switch self {
         case .all: return "square.grid.2x2"

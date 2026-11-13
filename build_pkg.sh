@@ -4,6 +4,19 @@ set -e
 echo "🚀 0ne8witch Release modunda derleniyor..."
 cd "$(dirname "$0")"
 
+# Sürüm tek kaynaktan okunur: version.json
+if [ ! -f version.json ]; then
+    echo "❌ version.json bulunamadi."
+    exit 1
+fi
+VERSION=$(/usr/bin/python3 -c "import json;print(json.load(open('version.json'))['surum'])")
+BUILD=$(/usr/bin/python3 -c "import json;print(json.load(open('version.json'))['build'])")
+echo "🔖 Sürüm: $VERSION (build $BUILD)"
+
+# Command Line Tools'ta SwiftUI makro eklentisi (@State) yok; Xcode varsa onu kullan.
+if [ -z "$DEVELOPER_DIR" ] && [ -d /Applications/Xcode.app/Contents/Developer ]; then
+    export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+fi
 swift build -c release
 
 APP_NAME="0ne8witch"
@@ -68,6 +81,10 @@ cat << 'EOF' > "$BUNDLE_DIR/Contents/Info.plist"
 </plist>
 EOF
 
+# Sürüm alanlarını version.json'dan yaz
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$BUNDLE_DIR/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" "$BUNDLE_DIR/Contents/Info.plist"
+
 # Çalıştırma izinlerini ver
 chmod +x "$MACOS_DIR/$APP_NAME"
 xattr -cr "$BUNDLE_DIR" 2>/dev/null || true
@@ -80,7 +97,7 @@ rm -f "$APP_NAME.pkg"
 pkgbuild --component "$BUNDLE_DIR" \
          --install-location "/Applications" \
          --identifier "com.avenox.0ne8witch" \
-         --version "1.0.1" \
+         --version "$VERSION" \
          "$APP_NAME.pkg"
 
 echo ""

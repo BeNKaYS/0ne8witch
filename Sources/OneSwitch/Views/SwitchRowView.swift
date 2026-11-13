@@ -1,94 +1,112 @@
 import SwiftUI
 
-/// Her bir anahtarın modern, macOS tarzındaki satır görünümü
+/// Her bir anahtarın macOS Kontrol Merkezi tarzındaki satır görünümü
 public struct SwitchRowView: View {
     let item: any SwitchItemProtocol
     @ObservedObject private var manager = SwitchManager.shared
-    
+    @State private var hovering = false
+
     public init(item: any SwitchItemProtocol) {
         self.item = item
     }
-    
+
     public var body: some View {
-        HStack(spacing: 12) {
-            // İkon Kutusu
+        HStack(spacing: 10) {
+            // İkon: açıkken dolu vurgu rengi, kapalıyken nötr
             ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(item.isOn ? AppTheme.activeBackground : Color.primary.opacity(0.06))
-                    .frame(width: 34, height: 34)
-                
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(item.isOn ? AppTheme.active : Color.primary.opacity(0.07))
                 Image(systemName: item.iconName)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(item.isOn ? AppTheme.active : Color.secondary)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(item.isOn ? .white : .secondary)
             }
-            
-            // Başlık ve Alt Durum
-            VStack(alignment: .leading, spacing: 2) {
+            .frame(width: 28, height: 28)
+            .animation(.easeOut(duration: 0.15), value: item.isOn)
+
+            VStack(alignment: .leading, spacing: 1) {
                 Text(item.title)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12.5, weight: .medium))
                     .foregroundColor(.primary)
-                
+                    .lineLimit(1)
                 Text(item.subtitle)
-                    .font(.system(size: 11))
-                    .foregroundColor(item.isOn ? AppTheme.active : .secondary)
+                    .font(.system(size: 10.5))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
             }
-            
-            Spacer()
-            
-            // Özel Seçenekler (Örn: Uyanık Kal için Süre Seçimi)
+
+            Spacer(minLength: 6)
+
+            if let brightness = item as? BrightnessSwitch {
+                Slider(
+                    value: Binding(
+                        get: { brightness.level },
+                        set: { brightness.setLevel($0) }
+                    ),
+                    in: 0...1
+                )
+                .frame(width: 74)
+                .controlSize(.mini)
+                .tint(AppTheme.active)
+            }
+
             if let keepAwake = item as? KeepAwakeSwitch {
-                Menu {
-                    ForEach(KeepAwakeSwitch.DurationOption.allCases) { option in
-                        Button(action: {
-                            keepAwake.turnOn(duration: option)
-                        }) {
-                            HStack {
-                                Text(option.rawValue)
-                                if keepAwake.selectedDuration == option && keepAwake.isOn {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                    if keepAwake.isOn {
-                        Divider()
-                        Button("Durdur") {
-                            keepAwake.turnOff()
-                        }
-                    }
-                } label: {
-                    Image(systemName: "timer")
-                        .font(.system(size: 13))
-                        .foregroundColor(keepAwake.isOn ? AppTheme.active : .secondary)
-                        .padding(5)
-                        .background(Color.primary.opacity(0.05))
-                        .clipShape(Circle())
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
+                KeepAwakeMenu(keepAwake: keepAwake)
             }
-            
-            // Toggle Anahtarı
+
             Toggle("", isOn: Binding(
                 get: { item.isOn },
                 set: { _ in
+                    // Sonraki okuma eski önbelleği görmesin.
+                    SystemStateReader.shared.invalidate()
                     item.toggle()
                 }
             ))
             .toggleStyle(.switch)
             .tint(AppTheme.active)
             .labelsHidden()
-            .controlSize(.small)
+            .controlSize(.mini)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(item.isOn ? AppTheme.active.opacity(0.07) : Color.primary.opacity(0.02))
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.primary.opacity(hovering ? 0.06 : 0))
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(item.isOn ? AppTheme.active.opacity(0.22) : Color.clear, lineWidth: 1)
-        )
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .help(item.subtitle)
+    }
+}
+
+/// Uyanık Kal için süre seçimi
+private struct KeepAwakeMenu: View {
+    @ObservedObject var keepAwake: KeepAwakeSwitch
+
+    var body: some View {
+        Menu {
+            ForEach(KeepAwakeSwitch.DurationOption.allCases) { option in
+                Button {
+                    keepAwake.turnOn(duration: option)
+                } label: {
+                    if keepAwake.selectedDuration == option && keepAwake.isOn {
+                        Label(option.rawValue, systemImage: "checkmark")
+                    } else {
+                        Text(option.rawValue)
+                    }
+                }
+            }
+            if keepAwake.isOn {
+                Divider()
+                Button("Durdur") { keepAwake.turnOff() }
+            }
+        } label: {
+            Image(systemName: "timer")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(keepAwake.isOn ? AppTheme.active : .secondary)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Süre seç")
     }
 }

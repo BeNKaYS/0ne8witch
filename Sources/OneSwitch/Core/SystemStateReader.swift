@@ -9,10 +9,13 @@ public final class SystemStateReader {
     public static let shared = SystemStateReader()
     
     private let lock = NSLock()
+    /// Okumaları sıraya dizer: arka plan ön ısıtması sürerken gelen ikinci istek
+    /// yeni bir zsh süreci başlatmaz, ilkinin bitmesini bekleyip sonucunu kullanır.
+    private let readLock = NSLock()
     private var cachedValues: [String: String]?
     private var cachedAt: Date = .distantPast
     /// Aynı açılış/refresh turundaki okumalar tek çağrıyı paylaşsın diye kısa tutuldu.
-    private let cacheLifetime: TimeInterval = 0.25
+    private let cacheLifetime: TimeInterval = 1.0
     
     private init() {}
     
@@ -21,20 +24,30 @@ public final class SystemStateReader {
         return snapshot()[key] ?? ""
     }
     
-    /// Önbelleği arka planda tazeler; menü açılırken ilk kareyi bloklamaz.
-    public func prewarmAsync() {
+    /// Önbelleği arka planda tazeler, bitince `completion`'ı ana iş parçacığında çağırır.
+    /// Menü açılırken ilk kare shell çağrılarını beklemez.
+    public func prewarmAsync(completion: (() -> Void)? = nil) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
-            self.lock.lock()
-            let isFresh = self.cachedValues != nil &&
-                Date().timeIntervalSince(self.cachedAt) < self.cacheLifetime
-            self.lock.unlock()
-            if !isFresh {
-                _ = self.snapshot()
+            _ = self?.snapshot()
+            if let completion {
+                DispatchQueue.main.async(execute: completion)
             }
         }
     }
     
+    /// `Volume` satırı: "çıkış_sessiz,giriş_seviyesi" (ör. "false,75").
+    public var outputMuted: Bool? {
+        let parts = value(for: "Volume").split(separator: ",")
+        guard parts.count == 2 else { return nil }
+        return parts[0].lowercased() == "true"
+    }
+
+    public var inputVolume: Int? {
+        let parts = value(for: "Volume").split(separator: ",")
+        guard parts.count == 2 else { return nil }
+        return Int(parts[1])
+    }
+
     /// Bir anahtar değiştirildikten sonra önbelleği geçersiz kılar.
     public func invalidate() {
         lock.lock()
@@ -43,15 +56,23 @@ public final class SystemStateReader {
         cachedAt = .distantPast
     }
     
-    private func snapshot() -> [String: String] {
+    private func cachedIfFresh() -> [String: String]? {
         lock.lock()
-        let now = Date()
-        if let values = cachedValues, now.timeIntervalSince(cachedAt) < cacheLifetime {
-            lock.unlock()
-            return values
+        defer { lock.unlock() }
+        guard let values = cachedValues, Date().timeIntervalSince(cachedAt) < cacheLifetime else {
+            return nil
         }
-        lock.unlock()
-        
+        return values
+    }
+
+    private func snapshot() -> [String: String] {
+        if let values = cachedIfFresh() { return values }
+
+        readLock.lock()
+        defer { readLock.unlock() }
+        // Biz beklerken başka bir okuma bitirmiş olabilir.
+        if let values = cachedIfFresh() { return values }
+
         let values = readSnapshot()
         
         lock.lock()
@@ -75,6 +96,25 @@ public final class SystemStateReader {
         printf 'LowPowerMode=%s\\n' "$(pmset -g 2>/dev/null | awk '/lowpowermode/ {print $2; exit}')"
         printf 'Caffeinate=%s\\n' "$(pgrep caffeinate 2>/dev/null | tr '\\n' ' ')"
         printf 'UserLibrary=%s\\n' "$(ls -ldO "$HOME/Library" 2>/dev/null)"
+        printf 'FinderPathbar=%s\\n' "$(defaults read com.apple.finder ShowPathbar 2>/dev/null)"
+        printf 'FinderStatusBar=%s\\n' "$(defaults read com.apple.finder ShowStatusBar 2>/dev/null)"
+        printf 'MenuBarAutoHide=%s\\n' "$(defaults read NSGlobalDomain _HIHideMenuBar 2>/dev/null)"
+        printf 'DockMagnification=%s\\n' "$(defaults read com.apple.dock magnification 2>/dev/null)"
+        printf 'DockRecents=%s\\n' "$(defaults read com.apple.dock show-recents 2>/dev/null)"
+        printf 'ClockSeconds=%s\\n' "$(defaults read com.apple.menuextra.clock ShowSeconds 2>/dev/null)"
+        printf 'AskPassword=%s\\n' "$(defaults -currentHost read com.apple.screensaver askForPassword 2>/dev/null || defaults read com.apple.screensaver askForPassword 2>/dev/null)"
+        WIFI_DEV=$(networksetup -listallhardwareports 2>/dev/null | awk '/Hardware Port: (Wi-Fi|AirPort)/{getline; print $2; exit}')
+        printf 'WiFiDevice=%s\\n' "$WIFI_DEV"
+        printf 'WiFiPower=%s\\n' "$(networksetup -getairportpower "$WIFI_DEV" 2>/dev/null | awk -F': ' '{print $2}')"
+        printf 'Volume=%s\\n' "$(osascript -e 'set v to get volume settings' -e '(output muted of v as text) & "," & (input volume of v as text)' 2>/dev/null)"
+        for B in /opt/homebrew/bin/blueutil /usr/local/bin/blueutil; do
+          if [ -x "$B" ]; then printf 'BluetoothPower=%s\\n' "$("$B" -p 2>/dev/null)"; break; fi
+        done
+        printf 'ScreenshotShadow=%s\\n' "$(defaults read com.apple.screencapture disable-shadow 2>/dev/null)"
+        printf 'DockShowHidden=%s\\n' "$(defaults read com.apple.dock showhidden 2>/dev/null)"
+        printf 'DockStaticOnly=%s\\n' "$(defaults read com.apple.dock static-only 2>/dev/null)"
+        printf 'FinderFoldersFirst=%s\\n' "$(defaults read com.apple.finder _FXSortFoldersFirst 2>/dev/null)"
+        printf 'QuitFinder=%s\\n' "$(defaults read com.apple.finder QuitMenuItem 2>/dev/null)"
         """
         
         let result = CommandRunner.shared.runShell(script)

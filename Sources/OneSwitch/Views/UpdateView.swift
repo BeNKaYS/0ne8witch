@@ -30,16 +30,21 @@ public struct UpdateSettingsView: View {
 
                     if !updater.latestVersion.isEmpty {
                         HStack {
+                            Text("Son Surum:")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                            Text(updater.latestVersion)
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                    }
+
+                    if let d = updater.lastChecked {
+                        HStack {
                             Text("Son Kontrol:")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
-                            if let d = updater.lastChecked {
-                                Text(d, style: .relative)
-                                    .font(.system(size: 12))
-                            } else {
-                                Text("-")
-                                    .font(.system(size: 12))
-                            }
+                            Text(d, style: .relative)
+                                .font(.system(size: 12))
                         }
                     }
                 }
@@ -51,6 +56,28 @@ public struct UpdateSettingsView: View {
 
                 // Durum mesajı
                 statusView
+
+                // Onceki kurulum denemesinin sonucu
+                if let result = updater.lastInstallResult {
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: result.contains("kurulamadi") ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                            .foregroundColor(result.contains("kurulamadi") ? .orange : .green)
+                        Text(result)
+                            .font(.system(size: 12))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 4)
+                        Button(action: { updater.lastInstallResult = nil }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill((result.contains("kurulamadi") ? Color.orange : Color.green).opacity(0.12))
+                    )
+                }
 
                 // Aksiyon butonları
                 HStack(spacing: 10) {
@@ -149,7 +176,7 @@ public struct UpdateSettingsView: View {
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
 
-                    TextField("https://...", text: Binding(get: { updater.feedURL }, set: { updater.feedURL = $0 }))
+                    TextField("https://...", text: $updater.feedURL)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11))
                     Text("Degisiklikler otomatik kaydedilir.")
@@ -280,8 +307,11 @@ public struct UpdateSettingsView: View {
         case .upToDate:
             HStack(spacing: 6) {
                 Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
-                Text("Uygulamaniz guncel.")
+                Text(updater.latestVersion.isEmpty
+                     ? "Uygulamaniz guncel."
+                     : "Uygulamaniz guncel. (En son surum: \(updater.latestVersion))")
                     .font(.system(size: 12, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         case .available(let v, _):
             HStack(spacing: 6) {
@@ -305,11 +335,12 @@ public struct UpdateSettingsView: View {
                     .foregroundColor(.secondary)
             }
         case .error(let msg):
-            HStack(spacing: 6) {
+            HStack(alignment: .top, spacing: 6) {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.red)
                 Text(msg)
                     .font(.system(size: 12))
                     .foregroundColor(.red)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

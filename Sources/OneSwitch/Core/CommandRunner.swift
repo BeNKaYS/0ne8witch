@@ -19,8 +19,10 @@ public final class CommandRunner {
         
         do {
             try task.run()
-            task.waitUntilExit()
+            // Önce oku, sonra bekle: çıktı pipe tamponunu (~64 KB) aşarsa
+            // süreç yazmayı bekler, biz de çıkışını bekleriz → kilitlenme.
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            task.waitUntilExit()
             let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             return (output, task.terminationStatus)
         } catch {

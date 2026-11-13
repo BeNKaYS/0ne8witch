@@ -237,44 +237,134 @@ private struct MenuBarIconButton: View {
 private struct CustomizeSwitchesView: View {
     @ObservedObject var prefs = PreferencesManager.shared
     @ObservedObject var switchManager = SwitchManager.shared
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Menü Çubuğunda Gösterilecek Anahtarları Seçin:")
-                .font(.system(size: 12, weight: .medium))
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Satırları sürükleyerek sıralayın. Kapattıklarınız menüden tamamen kalkar.")
+                .font(.system(size: 11))
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
-            
+
             List {
-                ForEach(switchManager.allSwitches, id: \.id) { item in
-                    HStack(spacing: 12) {
-                        Image(systemName: item.iconName)
-                            .font(.system(size: 14))
-                            .foregroundColor(prefs.isSwitchVisible(id: item.id) ? AppTheme.active : .secondary)
-                            .frame(width: 20)
-                        
-                        Text(item.title)
-                            .font(.system(size: 13))
-                        
-                        Spacer()
-                        
-                        Toggle("", isOn: Binding(
-                            get: { prefs.isSwitchVisible(id: item.id) },
-                            set: { _ in prefs.toggleSwitchVisibility(id: item.id) }
-                        ))
-                        .toggleStyle(.switch)
-                        .tint(AppTheme.active)
-                        .labelsHidden()
-                        .controlSize(.small)
+                Section {
+                    ForEach(switchManager.allSwitches, id: \.id) { item in
+                        SwitchVisibilityRow(
+                            icon: item.iconName,
+                            title: item.title,
+                            detail: item.subtitle,
+                            isVisible: prefs.isSwitchVisible(id: item.id)
+                        ) {
+                            prefs.toggleSwitchVisibility(id: item.id)
+                        }
                     }
-                    .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
+                    .onMove { source, destination in
+                        prefs.moveSwitch(fromOffsets: source, toOffset: destination)
+                    }
+                } header: {
+                    SectionHeader(
+                        title: "Anahtarlar",
+                        visibleCount: prefs.visibleSwitchIDs.count,
+                        totalCount: switchManager.allSwitches.count,
+                        isCustomOrder: prefs.isSwitchOrderCustom,
+                        resetOrder: prefs.resetSwitchOrder
+                    )
+                }
+
+                Section {
+                    ForEach(prefs.allQuickActionsInOrder) { kind in
+                        SwitchVisibilityRow(
+                            icon: kind.icon,
+                            title: kind.label,
+                            detail: kind.detail,
+                            isVisible: prefs.isQuickActionVisible(id: kind.rawValue)
+                        ) {
+                            prefs.setQuickActionVisible(
+                                kind.rawValue,
+                                visible: !prefs.isQuickActionVisible(id: kind.rawValue)
+                            )
+                        }
+                    }
+                    .onMove { source, destination in
+                        prefs.moveQuickAction(fromOffsets: source, toOffset: destination)
+                    }
+                } header: {
+                    SectionHeader(
+                        title: "Hızlı Eylemler & Araçlar",
+                        visibleCount: prefs.visibleQuickActionIDs.count,
+                        totalCount: QuickActionKind.allCases.count,
+                        isCustomOrder: prefs.isQuickActionOrderCustom,
+                        resetOrder: prefs.resetQuickActionOrder
+                    )
                 }
             }
             .listStyle(.inset)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// Bölüm başlığı: başlık, "3 / 14 görünür" özeti ve sıralama sıfırlama.
+private struct SectionHeader: View {
+    let title: String
+    let visibleCount: Int
+    let totalCount: Int
+    let isCustomOrder: Bool
+    let resetOrder: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title)
+            Spacer()
+            Text("\(visibleCount) / \(totalCount) görünür")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+            if isCustomOrder {
+                Button("Sırayı sıfırla", action: resetOrder)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10))
+                    .foregroundColor(.accentColor)
+            }
+        }
+    }
+}
+
+/// Tek bir anahtar veya hızlı eylem satırı.
+private struct SwitchVisibilityRow: View {
+    let icon: String
+    let title: String
+    let detail: String
+    let isVisible: Bool
+    let toggle: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 13))
+                .foregroundColor(isVisible ? AppTheme.active : .secondary)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 13))
+                Text(detail)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: Binding(get: { isVisible }, set: { _ in toggle() }))
+                .toggleStyle(.switch)
+                .tint(AppTheme.active)
+                .labelsHidden()
+                .controlSize(.small)
+        }
+        .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
+        .opacity(isVisible ? 1 : 0.55)
     }
 }
 

@@ -42,7 +42,8 @@ public final class MicrophoneMuteSwitch: ObservableObject, SwitchItemProtocol {
     }
     
     public func refresh() {
-        let vol = getCurrentVolume()
+        // Menü açılışında ayrı AppleScript çalıştırmamak için önbellekten okunur.
+        let vol = SystemStateReader.shared.inputVolume ?? 50
         let isMuted = (vol == 0)
         self.isOn = isMuted
         self.subtitle = isMuted ? "Mikrofon Sessizde" : "Mikrofon Açık (%\(vol))"

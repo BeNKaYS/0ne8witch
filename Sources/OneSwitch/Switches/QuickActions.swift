@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import UniformTypeIdentifiers
 
 /// 0ne8witch Hızlı Eylemleri (Tek tıkla çalışan yardımcı araçlar)
 public final class QuickActions {
@@ -219,6 +220,98 @@ public final class QuickActions {
                 } else {
                     completion("Temizleme sırasında bir sorun oluştu.")
                 }
+            }
+        }
+    }
+
+    /// Kullanıcıya uygulama seçtirir ve karantina niteliğini kaldırır.
+    ///
+    /// macOS, indirilen bir uygulamayı "hasarlı" ya da "geliştirici doğrulanamadı"
+    /// diyerek açmayı reddettiğinde sorun genelde `com.apple.quarantine`
+    /// niteliğidir. Bu eylem niteliği kaldırır.
+    public func repairDamagedApp(completion: @escaping (String) -> Void) {
+        DispatchQueue.main.async {
+            let panel = NSOpenPanel()
+            panel.title = "Onarılacak uygulamayı seçin"
+            panel.message = "Açılmayan uygulamayı (.app) seçin; karantina niteliği kaldırılacak."
+            panel.prompt = "Onar"
+            panel.allowsMultipleSelection = false
+            panel.canChooseDirectories = false
+            panel.canChooseFiles = true
+            panel.treatsFilePackagesAsDirectories = false
+            if let appType = UTType(filenameExtension: "app") {
+                panel.allowedContentTypes = [appType]
+            }
+
+            guard panel.runModal() == .OK, let url = panel.url else {
+                completion("Onarma iptal edildi.")
+                return
+            }
+
+            // Seçilen yol gerçekten bir uygulama paketi mi?
+            guard url.pathExtension.lowercased() == "app" else {
+                completion("Seçilen dosya bir .app paketi değil.")
+                return
+            }
+
+            DispatchQueue.global(qos: .userInitiated).async {
+                let quoted = url.path.replacingOccurrences(of: "'", with: "'\\''")
+                let result = CommandRunner.shared.runShell("xattr -r -d com.apple.quarantine '\(quoted)' 2>&1")
+                let name = url.deletingPathExtension().lastPathComponent
+
+                DispatchQueue.main.async {
+                    if result.exitCode == 0 {
+                        completion("\(name) onarıldı. Artık açılabilir.")
+                    } else if result.output.contains("No such xattr") {
+                        completion("\(name) zaten sağlıklı görünüyor (karantina yok).")
+                    } else {
+                        completion("\(name) onarılamadı: \(result.output)")
+                    }
+                }
+            }
+        }
+    }
+
+    /// Yerel ve dış IP adresini okuyup panoya kopyalar.
+    public func copyIPAddresses(completion: @escaping (String) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Aktif arayüzü bul: varsayılan rota hangi cihazdan çıkıyor?
+            let route = CommandRunner.shared.runShell("route -n get default 2>/dev/null | awk '/interface:/{print $2}'")
+            let device = route.output.split(separator: "\n").first.map(String.init) ?? "en0"
+
+            let localResult = CommandRunner.shared.runShell(
+                "ipconfig getifaddr \(device) 2>/dev/null || ifconfig \(device) 2>/dev/null | awk '/inet /{print $2; exit}'"
+            )
+            let localIP = localResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Dış IP için kısa zaman aşımıyla tek istek.
+            var externalIP = ""
+            if let url = URL(string: "https://api.ipify.org") {
+                var request = URLRequest(url: url)
+                request.timeoutInterval = 5
+                let semaphore = DispatchSemaphore(value: 0)
+                URLSession.shared.dataTask(with: request) { data, _, _ in
+                    if let data, let text = String(data: data, encoding: .utf8) {
+                        externalIP = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    }
+                    semaphore.signal()
+                }.resume()
+                _ = semaphore.wait(timeout: .now() + 6)
+            }
+
+            DispatchQueue.main.async {
+                var lines: [String] = []
+                if !localIP.isEmpty { lines.append("Yerel (\(device)): \(localIP)") }
+                if !externalIP.isEmpty { lines.append("Dış IP: \(externalIP)") }
+
+                guard !lines.isEmpty else {
+                    completion("IP adresi okunamadı. Ağ bağlantısını kontrol edin.")
+                    return
+                }
+
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(lines.joined(separator: "\n"), forType: .string)
+                completion(lines.joined(separator: " · ") + " (panoya kopyalandı)")
             }
         }
     }

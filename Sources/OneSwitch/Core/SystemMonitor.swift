@@ -54,11 +54,15 @@ public final class SystemMonitor: ObservableObject {
             var totalInUse: Int64 = 0
             var totalTotal: Int64 = 0
             
+            // Tik sayaçları uzun açık kalmada Int32 sınırını aşıp sarar.
+            // Normal `-` bu durumda taşma ile çöker; işaretsiz sarmalı fark alınır.
+            func delta(_ cpu: Int, _ state: Int32) -> Int64 {
+                let idx = Int(CPU_STATE_MAX) * cpu + Int(state)
+                return Int64(UInt32(bitPattern: cpuInfo[idx]) &- UInt32(bitPattern: prevInfo[idx]))
+            }
             for i in 0..<Int(numProcessors) {
-                let inUse = Int64(cpuInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_USER)] - prevInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_USER)])
-                    + Int64(cpuInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_SYSTEM)] - prevInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_SYSTEM)])
-                    + Int64(cpuInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_NICE)] - prevInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_NICE)])
-                let total = inUse + Int64(cpuInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_IDLE)] - prevInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_IDLE)])
+                let inUse = delta(i, CPU_STATE_USER) + delta(i, CPU_STATE_SYSTEM) + delta(i, CPU_STATE_NICE)
+                let total = inUse + delta(i, CPU_STATE_IDLE)
                 
                 totalInUse += inUse
                 totalTotal += total

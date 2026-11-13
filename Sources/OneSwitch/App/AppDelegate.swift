@@ -39,15 +39,23 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Popover Oluştur
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 320, height: 480)
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: MainMenuView())
+        popover.animates = true
+        let host = NSHostingController(rootView: MainMenuView())
+        // Popover boyutu SwiftUI içeriğinden gelir; sabit boyut kayma yaratıyordu.
+        host.sizingOptions = .preferredContentSize
+        popover.contentViewController = host
         
-        // İlk açılışta durumları tara
-        SwitchManager.shared.refreshAll()
+        // İlk açılışta durumları arka planda tara
+        SystemStateReader.shared.prewarmAsync { SwitchManager.shared.refreshAll() }
         
         // Canlı Sistem Monitörünü Başlat (CPU & RAM)
         SystemMonitor.shared.startMonitoring()
+
+        // Önceki kurulum denemesinin sonucunu bildir
+        if let result = UpdateManager.shared.lastInstallResult {
+            SwitchManager.shared.showNotification(result)
+        }
 
         // Güncelleme kontrolü (arka planda)
         updateCancellable = UpdateManager.shared.$state
@@ -120,10 +128,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
         
-        SystemStateReader.shared.prewarmAsync()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            SwitchManager.shared.refreshAll()
-        }
+        // Okuma bitince tek seferde tazelenir; ana iş parçacığı shell beklemez.
+        SystemStateReader.shared.prewarmAsync { SwitchManager.shared.refreshAll() }
     }
     
     public func closePopover() {

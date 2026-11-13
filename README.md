@@ -27,6 +27,42 @@
 
 ---
 
+## 🆕 v1.0.3 ile Eklenen Anahtarlar (12 Adet)
+
+### Finder & Masaüstü
+- 🧭 **Finder Yol Çubuğu**: Klasör yolunu pencerenin altında gösterir.
+- ℹ️ **Finder Durum Çubuğu**: Öğe sayısı ve boş disk alanını gösterir.
+
+### Menü Çubuğu & Dock
+- 📊 **Menü Çubuğunu Gizle**: Menü çubuğunu otomatik gizler, tam ekran hissi verir.
+- ⏱️ **Saatte Saniyeler**: Menü çubuğundaki saate saniye ekler.
+- 🔍 **Dock Büyütme**: Fare Dock üzerine gelince ikonlar büyür.
+- 🕘 **Dock Son Uygulamalar**: Dock'un sağındaki son kullanılanlar bölümünü açar/kapatır.
+
+### Güvenlik & Bağlantı
+- 🔐 **Uyanınca Şifre İste**: Uykudan veya ekran koruyucudan çıkışta parola sorar.
+- 📶 **Wi-Fi**: Radyoyu açar/kapatır. `networksetup` yönetici yetkisi istediği için macOS parola penceresi açılır.
+- 🔵 **Bluetooth**: Açar/kapatır. `blueutil` kuruluysa onu, değilse IOBluetooth çerçevesini kullanır.
+- 🌅 **Gece Vakti**: Ekranı sıcak renklere çevirir (özel `CBBlueLightClient` çerçevesi).
+- 🌙 **Rahatsız Etme**: Kısayollar uygulamasındaki "Odak Değiştir" kısayolunu çalıştırır.
+- 🎧 **AirPods'e Geç**: Ses çıkışını tek tıkla kablosuz kulaklık ile dahili hoparlör arasında değiştirir.
+
+### Hızlı Eylemler (artık 14 düğme)
+Panoyu Sil · Ekranı Kilitle · Ekran Koruyucu · Ekranı Uyut · Renk Seç (HEX) · Xcode Temizle · Uygulama Onar · IP Kopyala eylemleri arayüze bağlandı.
+
+## 🆕 v1.0.4 ile Eklenenler
+
+- 🌞 **True Tone**: Ortam ışığına göre renk sıcaklığı (`CBAdaptationClient`).
+- 🔆 **Ekran Parlaklığı**: Satır içi kaydırıcı ile ince ayar (`DisplayServices`).
+- ⬛ **Çentiği Gizle**: Çentikli MacBook'larda üst şeridi siyahla kapatır; menü çubuğu simgeleri görünür kalır.
+- 🩹 **Uygulama Onar**: "Hasarlı, açılamıyor" hatasını çözer (`xattr -d com.apple.quarantine`).
+- 🌐 **IP Kopyala**: Yerel ve dış IP'yi panoya kopyalar.
+
+### Düzeltme: Gece Vakti durumu
+`CBBlueLightClient.getBlueLightStatus:` yapısı `bool, bool, bool, ...` ile başlar. Önceki sürüm ilk baytı ("etkin") okuyordu; doğru alan ikinci bayttır (`enabled`). Artık doğru alan okunuyor, `supported` kontrol ediliyor ve `setEnabled` sonrası durum yeniden doğrulanıyor.
+
+---
+
 ## ⚡️ Hızlı Eylemler (Quick Actions)
 - 🗑️ **Çöp Kutusunu Boşalt**: Finder uyarı pencerelerini ve takılmaları otomatik olarak atlayıp çöpü anında ve sessizce boşaltır, kaç öğe silindiğini ekranda bildirir.
 - 📋 **Panoyu Sil**: Kopyalanmış metin ve görselleri panodan tamamen temizler.
@@ -71,9 +107,27 @@ open 0ne8witch.app
 ```
 
 ### 3. Otomatik Güncelleme Modülü:
-Ayarlar penceresindeki **Güncellemeler** sekmesinden veya menü çubuğundaki **Güncelle** düğmesinden yeni sürümler kontrol edilir. GitHub Releases (veya özel bir JSON manifest) üzerinden indirilen zip paketi otomatik olarak kurulur ve uygulama yeniden başlatılır. Böylece her değişiklik için yeniden derleme yapmak gerekmez.
+Ayarlar penceresindeki **Güncellemeler** sekmesinden yeni sürümler kontrol edilir. GitHub Releases (veya özel bir JSON manifest) üzerinden indirilen zip paketi otomatik olarak kurulur ve uygulama yeniden başlatılır.
 
-### 3. Sıfırdan Tekrar Paketleme (Release):
+Kurulumdan önce mevcut uygulama `~/Library/Application Support/0ne8witch/backups/` altına yedeklenir; taşıma veya açılış başarısız olursa yedekten geri dönülür. Sonuç, bir sonraki açılışta Ayarlar → Güncellemeler ekranında ve menü bildiriminde gösterilir.
+
+GitHub API'si kimlik doğrulamasız saatte 60 istekle sınırlıdır. Limit dolduğunda uygulama otomatik olarak herkese açık `releases.atom` akışına ve sürüm sayfasına düşer, bu yüzden kontrol çalışmaya devam eder.
+
+### 4. Sürüm Yükseltme:
+Sürüm numarası tek yerden, `version.json` dosyasından okunur. Yeni sürüm yayınlarken **önce** bu dosyayı güncelleyin:
+
+```json
+{
+  "surum": "1.0.2",
+  "build": 3,
+  "tarih": "2026-10-25",
+  "not": "Değişiklik özeti"
+}
+```
+
+`build_pkg.sh` ve `build_app.sh` bu değerleri `Info.plist` içine yazar. Sürüm artırılmazsa uygulama kendini güncel sayar ve güncelleme hiç görünmez.
+
+### 5. Sıfırdan Tekrar Paketleme (Release):
 ```bash
 ./build_pkg.sh
 ```
