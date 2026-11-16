@@ -83,6 +83,10 @@ public final class HideNotchSwitch: ObservableObject, SwitchItemProtocol {
         rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1
     )
 
+    /// Menü çubuğu altındaki sol/sağ köşelerin yuvarlatma yarıçapı.
+    /// Pencere köşe yarıçapından büyük olmalı ki köşe boşlukları tam kapansın.
+    private static let cornerRadius: CGFloat = 22
+
     private func installOverlays() {
         removeOverlays()
 
@@ -98,11 +102,13 @@ public final class HideNotchSwitch: ObservableObject, SwitchItemProtocol {
             guard height > 0 else { continue }
 
             // Şeridin tamamı kaplanır: çentik, sol ve sağ yanlar tek parça siyah olur.
+            // Altına içbükey köşeler için `cornerRadius` kadar ek alan bırakılır.
+            let r = HideNotchSwitch.cornerRadius
             let frame = NSRect(
                 x: screen.frame.origin.x,
-                y: screen.frame.maxY - height,
+                y: screen.frame.maxY - height - r,
                 width: screen.frame.width,
-                height: height
+                height: height + r
             )
 
             let window = NotchMaskWindow(
@@ -116,14 +122,14 @@ public final class HideNotchSwitch: ObservableObject, SwitchItemProtocol {
             window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
             window.ignoresMouseEvents = true
             window.hasShadow = false
-            window.backgroundColor = .black
-            window.isOpaque = true
+            window.backgroundColor = .clear
+            window.isOpaque = false
             window.animationBehavior = .none
 
-            let view = NSView(frame: NSRect(origin: .zero, size: frame.size))
-            view.wantsLayer = true
-            view.layer?.backgroundColor = NSColor.black.cgColor
-            window.contentView = view
+            window.contentView = NotchMaskView(
+                frame: NSRect(origin: .zero, size: frame.size),
+                cornerRadius: r
+            )
 
             window.orderFrontRegardless()
             windows.append(window)
@@ -150,6 +156,43 @@ public final class HideNotchSwitch: ObservableObject, SwitchItemProtocol {
             $0.close()
         }
         windows.removeAll()
+    }
+}
+
+/// Üstte düz siyah şerit, altında sol ve sağda içbükey siyah köşeler çizer.
+private final class NotchMaskView: NSView {
+    private let r: CGFloat
+
+    init(frame: NSRect, cornerRadius: CGFloat) {
+        r = cornerRadius
+        super.init(frame: frame)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) kullanılmaz") }
+
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.black.setFill()
+        let w = bounds.width
+        // Menü çubuğu şeridi
+        NSRect(x: 0, y: r, width: w, height: bounds.height - r).fill()
+
+        // Sol köşe: kare eksi çeyrek daire
+        let left = NSBezierPath()
+        left.move(to: NSPoint(x: 0, y: 0))
+        left.line(to: NSPoint(x: 0, y: r))
+        left.line(to: NSPoint(x: r, y: r))
+        left.appendArc(withCenter: NSPoint(x: r, y: 0), radius: r, startAngle: 90, endAngle: 180)
+        left.close()
+        left.fill()
+
+        // Sağ köşe
+        let right = NSBezierPath()
+        right.move(to: NSPoint(x: w, y: 0))
+        right.line(to: NSPoint(x: w, y: r))
+        right.line(to: NSPoint(x: w - r, y: r))
+        right.appendArc(withCenter: NSPoint(x: w - r, y: 0), radius: r, startAngle: 90, endAngle: 0, clockwise: true)
+        right.close()
+        right.fill()
     }
 }
 

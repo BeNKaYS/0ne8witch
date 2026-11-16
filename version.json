@@ -1,6 +1,6 @@
 {
-  "surum": "1.0.8",
-  "build": 9,
-  "tarih": "2026-11-13",
-  "not": "Yenilenen menu arayuzu (arama, kategori filtreleri, CPU/RAM gostergeleri), 5 yeni anahtar (golgesiz ekran goruntusu, Dock gizli/yalnizca acik uygulamalar, Finder klasorler once ve cikis) ve kararlilik duzeltmeleri."
+  "surum": "1.0.9",
+  "build": 10,
+  "tarih": "2026-11-16",
+  "not": "Centigi Gizle artik menu cubugunun altindaki sol ve sag ust koseleri de siyahla kapatiyor; pencere koselerinden masaustu gorunmuyor."
 }
